@@ -1,5 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
+import axios from 'axios';
 
 const URL = `http://api.waqi.info/feed/@${process.env.STATION_ID}/?token=${process.env.API_TOKEN}`;
 
@@ -8,15 +9,11 @@ export class AirQService {
   constructor(private readonly httpService: HttpService) {}
   public async onMessage() {
     try {
-      let data;
-
-      this.httpService.get(URL).subscribe((res) => {
-        data = res;
-      });
-
-      return data;
+      const response = await axios.post(URL);
+      console.log(response);
+      return response.data;
     } catch (error) {
-      throw error;
+      console.error(error);
     }
   }
 }
