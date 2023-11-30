@@ -13,6 +13,9 @@ RUN npm install
 # Копируем исходный код приложения в директорию приложения
 COPY . .
 
+# EXPOSE указывает порт, на котором приложение слушает
+EXPOSE 3000
+
 # Собираем TypeScript код в JavaScript
 RUN npm run build
 

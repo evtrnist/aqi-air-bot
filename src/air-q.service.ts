@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 
 const URL = `http://api.waqi.info/feed/@${process.env.STATION_ID}/?token=${process.env.API_TOKEN}`;
 
-//460264
-
 @Injectable()
 export class AirQService {
   public async onMessage() {
