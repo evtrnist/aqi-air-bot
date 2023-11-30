@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { Hears, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'vm';
+import { AirQService } from './air-q.service';
 
 @Update()
 @Injectable()
 export class AppService {
+  constructor(private readonly airQService: AirQService) {}
   getData(): { message: string } {
     return { message: 'Welcome to server!' };
   }
@@ -21,6 +23,6 @@ export class AppService {
 
   @Hears('го')
   async hearsHi(ctx: Context) {
-    await ctx.reply('Hey there');
+    await ctx.reply(this.airQService.onMessage());
   }
 }
