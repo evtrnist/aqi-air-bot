@@ -23,6 +23,8 @@ export class AppService {
 
   @Hears('го')
   async hearsHi(ctx: Context) {
-    await ctx.reply(this.airQService.onMessage());
+    const reply = await this.airQService.onMessage();
+    console.log(123, reply.data);
+    await ctx.reply(reply.data);
   }
 }
