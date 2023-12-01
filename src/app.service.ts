@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { Hears, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'vm';
 import { AirQService } from './air-q.service';
+import { AxiosResponse } from 'axios';
+import { EMPTY, catchError } from 'rxjs';
 
 @Update()
 @Injectable()
 export class AppService {
-  constructor(private readonly airQService: AirQService) {}
+  constructor(private readonly airQService: AirQService) { }
   getData(): { message: string } {
     return { message: 'Welcome to server!' };
   }
@@ -22,9 +24,14 @@ export class AppService {
   }
 
   @Hears('го')
-  async hearsHi(ctx: Context) {
-    const reply = await this.airQService.onMessage();
-    console.log(123, reply.data);
-    await ctx.reply(reply.data);
+  hearsHi(ctx: Context) {
+    this.airQService.onMessage$().pipe(catchError(err => {
+      console.error(err);
+      return EMPTY;
+    })).subscribe((val: AxiosResponse) => {
+      console.log(123, val);
+      ctx.reply(val);
+
+    });
   }
 }
