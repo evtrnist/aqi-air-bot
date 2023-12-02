@@ -1,15 +1,35 @@
 import { Injectable } from '@nestjs/common';
-import { Hears, On, Start, Update } from 'nestjs-telegraf';
+import { Command, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'vm';
 import { AirQService } from './air-q.service';
 import { AxiosResponse } from 'axios';
-import { catchError, interval, of, switchMap, takeUntil } from 'rxjs';
+import { Telegraf } from 'telegraf';
+import {
+  catchError,
+  interval,
+  of,
+  switchMap,
+  takeUntil,
+  tap,
+  timer,
+} from 'rxjs';
 import { DateTime } from 'luxon';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Update()
 @Injectable()
 export class AppService {
-  constructor(private readonly airQService: AirQService) {}
+  private subscribers = {};
+  private hoursMap = {
+    8: true,
+    17: true,
+    18: true,
+    20: true,
+  };
+  constructor(
+    private readonly airQService: AirQService,
+    @InjectBot() private readonly bot: Telegraf,
+  ) {}
   getData(): { message: string } {
     return { message: 'Welcome to server!' };
   }
@@ -24,45 +44,44 @@ export class AppService {
     await ctx.reply('Сомнительно, но окэй');
   }
 
-  @Hears('подписываюсь')
-  hearsHi(ctx: Context) {
-    ctx.reply('Теперь буду присылать данные в 8 утра в 20 вечера (если смогу)');
-    // Создаем поток, который будет отправлять запросы в 8 утра и 20 вечера каждый день по местному времени
-    const requestStream$ = interval(24 * 60 * 60 * 1000) // Один день в миллисекундах
-      .pipe(
-        switchMap(() => {
-          const now = DateTime.now().setZone('Asia/Yerevan'); // Установите свою временную зону
-          const currentHour = now.hour;
-          const currentMinutes = now.minutes;
-          console.log('currentHour', currentHour);
-          console.log('currentMinutes', currentMinutes);
-          console.log('now', now);
+  @Command('subscribe')
+  onSubscribeCommand(ctx: Context) {
+    if (this.subscribers[ctx.update.message.from.id]) {
+      ctx.reply('Уже подписаны');
+      return;
+    }
+    ctx.reply('Подписываю...');
 
-          // Отправляем запрос только если текущее время 8 утра или 20 вечера
-          if (
-            (currentHour === 8 && currentMinutes === 0) ||
-            (currentHour === 20 && currentMinutes === 0)
-          ) {
-            return this.airQService.onMessage$();
-          }
+    this.subscribers[ctx.update.message.from.id] = ctx.update.message.chat.id;
+  }
 
-          if (currentHour === 16 && currentMinutes === 0) {
-            return this.airQService.onMessage$();
-          }
+  @Cron(CronExpression.EVERY_MINUTE, {
+    timeZone: 'Asia/Yerevan',
+  })
+  handleCron() {
+    console.log(this.subscribers);
+    const erevanTime = DateTime.now().setZone('Asia/Yerevan');
+    if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 0) {
+      this.sendNotifications();
+    }
 
-          return of(undefined);
-        }),
-        catchError((err) => {
-          console.error(err);
-          return of(null); // Обработка ошибок
-        }),
-      );
+    if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 15) {
+      this.sendNotifications();
+    }
+  }
 
-    // Подписываемся на поток запросов и отправляем результат в чат
-    requestStream$.subscribe((val: AxiosResponse | null) => {
-      if (val !== null) {
-        console.log(123, val);
-        ctx.reply(val);
+  private sendNotifications() {
+    console.log('send');
+    this.bot.telegram.sendMessage(
+      Object.values(this.subscribers)[0] as string,
+      'Пытаюсь послать',
+    );
+    this.airQService.onMessage$().subscribe((val) => {
+      for (const subscriber in this.subscribers) {
+        this.bot.telegram.sendMessage(
+          this.subscribers[subscriber],
+          val.data[0].sensordatavalues[1].value,
+        );
       }
     });
   }
