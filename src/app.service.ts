@@ -33,19 +33,29 @@ export class AppService {
         switchMap(() => {
           const now = DateTime.now().setZone('Asia/Yerevan'); // Установите свою временную зону
           const currentHour = now.hour;
+          const currentMinutes = now.minutes;
+          console.log('currentHour', currentHour);
+          console.log('currentMinutes', currentMinutes);
+          console.log('now', now);
 
           // Отправляем запрос только если текущее время 8 утра или 20 вечера
-          if (currentHour === 8 || currentHour === 20) {
+          if (
+            (currentHour === 8 && currentMinutes === 0) ||
+            (currentHour === 20 && currentMinutes === 0)
+          ) {
             return this.airQService.onMessage$();
           }
 
-          return of(null);
+          if (currentHour === 16 && currentMinutes === 0) {
+            return this.airQService.onMessage$();
+          }
+
+          return of(undefined);
         }),
         catchError((err) => {
           console.error(err);
           return of(null); // Обработка ошибок
         }),
-        takeUntil(interval(10 * 60 * 1000)), // Прекращаем выполнение через 10 минут после отправки запроса
       );
 
     // Подписываемся на поток запросов и отправляем результат в чат
