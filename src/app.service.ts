@@ -22,8 +22,6 @@ export class AppService {
   private subscribers = {};
   private hoursMap = {
     8: true,
-    17: true,
-    18: true,
     20: true,
   };
   constructor(
@@ -37,6 +35,14 @@ export class AppService {
   @Start()
   async startCommand(ctx: Context) {
     await ctx.reply('Сейчас мы узнаем откуда готовилось нагазение');
+  }
+
+  @Hears('/go')
+  sendAQI(ctx: Context) {
+    this.airQService.onMessage$().subscribe((val) => {
+      console.log(val.data)
+      ctx.reply(`AQI сейчас ${val.data.data.aqi}`);
+    });
   }
 
   @On('sticker')
@@ -80,7 +86,7 @@ export class AppService {
       for (const subscriber in this.subscribers) {
         this.bot.telegram.sendMessage(
           this.subscribers[subscriber],
-          val.data[0].sensordatavalues[1].value,
+          `AQI сейчас ${val.data.data.aqi}`,
         );
       }
     });
