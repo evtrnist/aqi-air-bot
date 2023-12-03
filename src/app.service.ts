@@ -2,19 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Command, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
 import { Context } from 'vm';
 import { AirQService } from './air-q.service';
-import { AxiosResponse } from 'axios';
 import { Telegraf } from 'telegraf';
-import {
-  catchError,
-  interval,
-  of,
-  switchMap,
-  takeUntil,
-  tap,
-  timer,
-} from 'rxjs';
+
 import { DateTime } from 'luxon';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { getAqiInfo } from './get-aqi-value.map';
 
 @Update()
 @Injectable()
@@ -40,8 +32,12 @@ export class AppService {
   @Hears('/go')
   sendAQI(ctx: Context) {
     this.airQService.onMessage$().subscribe((val) => {
-      console.log(val.data)
-      ctx.reply(`AQI сейчас ${val.data.data.aqi}`);
+      console.log(val.data);
+      const { title, emoji } = getAqiInfo(+val.data.data.aqi);
+
+      ctx.reply(
+        `AQI сейчас ${val.data.data.aqi}, состояние воздуха ${title} ${emoji}`,
+      );
     });
   }
 
@@ -84,9 +80,10 @@ export class AppService {
     );
     this.airQService.onMessage$().subscribe((val) => {
       for (const subscriber in this.subscribers) {
+        const { title, emoji } = getAqiInfo(+val.data.data.aqi);
         this.bot.telegram.sendMessage(
           this.subscribers[subscriber],
-          `AQI сейчас ${val.data.data.aqi}`,
+          `AQI сейчас ${val.data.data.aqi}, состояние воздуха ${title} ${emoji}`,
         );
       }
     });
