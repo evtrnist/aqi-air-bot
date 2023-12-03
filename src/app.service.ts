@@ -1,20 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { Command, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
+import {
+  Command,
+  Ctx,
+  Hears,
+  InjectBot,
+  Message,
+  On,
+  Start,
+  Update,
+} from 'nestjs-telegraf';
 import { Context } from 'vm';
 import { AirQService } from './air-q.service';
-import { AxiosResponse } from 'axios';
-import { Telegraf } from 'telegraf';
-import {
-  catchError,
-  interval,
-  of,
-  switchMap,
-  takeUntil,
-  tap,
-  timer,
-} from 'rxjs';
+import { Telegraf, Markup } from 'telegraf';
+
 import { DateTime } from 'luxon';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { BotContext } from './bot-context.type';
+import { State } from './session-state';
 
 @Update()
 @Injectable()
@@ -28,19 +30,37 @@ export class AppService {
     private readonly airQService: AirQService,
     @InjectBot() private readonly bot: Telegraf,
   ) {}
-  getData(): { message: string } {
-    return { message: 'Welcome to server!' };
-  }
 
   @Start()
-  async startCommand(ctx: Context) {
-    await ctx.reply('Сейчас мы узнаем откуда готовилось нагазение');
+  async startCommand(@Ctx() ctx: BotContext) {
+    if (!ctx.session) {
+      ctx.session = { currentState: State.AwaitingCity }; // Инициализация сессии
+    } else {
+      ctx.session.currentState = State.AwaitingCity;
+    }
+    await ctx.reply(
+      'Привет! Я бот, который поможет отслеживать качество воздуха на улице. Напиши в ответном сообщении название города на английском языке, за качеством воздуха которого ты хочешь следить. Или даже ссылку на станцию с сайта https://aqicn.org/here/',
+    );
+    ctx.session.currentState = State.AwaitingCity;
+
+    await ctx.reply(`Счетчик сессии: ${JSON.stringify(ctx.session)}`);
+  }
+
+  @On('text')
+  async onText(@Message('text') message: string, @Ctx() ctx: BotContext) {
+    if (ctx.session.currentState === State.AwaitingCity) {
+      console.log(ctx);
+      ctx.session.city = 'yerevan';
+      ctx.session.currentState = null;
+      await ctx.reply(`Замечательно, ваш город: ${ctx.session.city}`);
+      // Выполнение дальнейших действий
+    }
   }
 
   @Hears('/go')
   sendAQI(ctx: Context) {
     this.airQService.onMessage$().subscribe((val) => {
-      console.log(val.data)
+      console.log(val.data);
       ctx.reply(`AQI сейчас ${val.data.data.aqi}`);
     });
   }
@@ -68,10 +88,6 @@ export class AppService {
     console.log(this.subscribers);
     const erevanTime = DateTime.now().setZone('Asia/Yerevan');
     if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 0) {
-      this.sendNotifications();
-    }
-
-    if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 15) {
       this.sendNotifications();
     }
   }
