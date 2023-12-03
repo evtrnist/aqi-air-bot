@@ -74,6 +74,11 @@ export class AppService {
 
   private sendNotifications() {
     console.log('send');
+
+    if (!Object.values(this.subscribers).length) {
+      return;
+    }
+
     this.bot.telegram.sendMessage(
       Object.values(this.subscribers)[0] as string,
       'Пытаюсь послать',
