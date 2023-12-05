@@ -11,12 +11,14 @@ import {
 } from 'nestjs-telegraf';
 import { Context } from 'vm';
 import { AirQService } from './air-q.service';
-import { Telegraf, Markup } from 'telegraf';
 
-import { DateTime } from 'luxon';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { BotContext } from './bot-context.type';
 import { State } from './session-state';
+import { Telegraf } from 'telegraf';
+
+import { DateTime } from 'luxon';
+import { getAqiInfo } from './get-aqi-value.map';
 
 @Update()
 @Injectable()
@@ -61,7 +63,11 @@ export class AppService {
   sendAQI(ctx: Context) {
     this.airQService.onMessage$().subscribe((val) => {
       console.log(val.data);
-      ctx.reply(`AQI сейчас ${val.data.data.aqi}`);
+      const { title, emoji } = getAqiInfo(+val.data.data.aqi);
+
+      ctx.reply(
+        `AQI сейчас ${val.data.data.aqi}, состояние воздуха ${title} ${emoji}`,
+      );
     });
   }
 
@@ -94,15 +100,21 @@ export class AppService {
 
   private sendNotifications() {
     console.log('send');
+
+    if (!Object.values(this.subscribers).length) {
+      return;
+    }
+
     this.bot.telegram.sendMessage(
       Object.values(this.subscribers)[0] as string,
       'Пытаюсь послать',
     );
     this.airQService.onMessage$().subscribe((val) => {
       for (const subscriber in this.subscribers) {
+        const { title, emoji } = getAqiInfo(+val.data.data.aqi);
         this.bot.telegram.sendMessage(
           this.subscribers[subscriber],
-          `AQI сейчас ${val.data.data.aqi}`,
+          `AQI сейчас ${val.data.data.aqi}, состояние воздуха ${title} ${emoji}`,
         );
       }
     });
