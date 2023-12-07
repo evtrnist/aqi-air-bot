@@ -66,10 +66,6 @@ export class AppService {
     if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 0) {
       this.sendNotifications();
     }
-
-    if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 15) {
-      this.sendNotifications();
-    }
   }
 
   private sendNotifications() {
