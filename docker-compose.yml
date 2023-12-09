@@ -1,20 +1,53 @@
 version: '3.8'
 
 services:
-  app:
-    container_name: aqi-bot
-    build: .
+  app-dev:
+    container_name: aqi-bot-dev
+    build:
+      context: .
+      target: development
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - "DATABASE_URL=${DATABASE_URL}"
       - "BOT_TOKEN=${BOT_TOKEN}"
       - "API_TOKEN=${API_TOKEN}"
       - "STATION_ID=${STATION_ID}"
     depends_on:
-      - db
+      - aqibotdb
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
 
-  db:
+  app-test:
+    container_name: aqi-bot-test
+    build:
+      context: .
+      target: testing
+    environment:
+      - "DATABASE_URL=${DATABASE_URL}"
+      - "BOT_TOKEN=${BOT_TOKEN}"
+      - "API_TOKEN=${API_TOKEN}"
+      - "STATION_ID=${STATION_ID}"
+    depends_on:
+      - aqibotdb
+
+  app-prod:
+    container_name: aqi-bot-prod
+    build:
+      context: .
+      target: production
+    ports:
+      - "3002:3000"
+    environment:
+      - "DATABASE_URL=${DATABASE_URL}"
+      - "BOT_TOKEN=${BOT_TOKEN}"
+      - "API_TOKEN=${API_TOKEN}"
+      - "STATION_ID=${STATION_ID}"
+    depends_on:
+      - aqibotdb
+
+  aqibotdb:
     container_name: postgres-db
     image: postgres:latest
     ports:
