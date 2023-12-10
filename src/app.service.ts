@@ -9,16 +9,16 @@ import {
   Start,
   Update,
 } from 'nestjs-telegraf';
-import { Context } from 'vm';
 import { AirQService } from './air-q.service';
 
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { BotContext } from './bot-context.type';
 import { State } from './session-state';
 import { Telegraf } from 'telegraf';
 
 import { DateTime } from 'luxon';
 import { getAqiInfo } from './get-aqi-value.map';
+import { Scenes } from 'telegraf';
+import { Scene } from './constants/scene';
 
 @Update()
 @Injectable()
@@ -34,33 +34,18 @@ export class AppService {
   ) {}
 
   @Start()
-  async startCommand(@Ctx() ctx: BotContext) {
-    if (!ctx.session) {
-      ctx.session = { currentState: State.AwaitingCity }; // Инициализация сессии
-    } else {
-      ctx.session.currentState = State.AwaitingCity;
-    }
-    await ctx.reply(
-      'Привет! Я бот, который поможет отслеживать качество воздуха на улице. Напиши в ответном сообщении название города на английском языке, за качеством воздуха которого ты хочешь следить. Или даже ссылку на станцию с сайта https://aqicn.org/here/',
-    );
-    ctx.session.currentState = State.AwaitingCity;
-
-    await ctx.reply(`Счетчик сессии: ${JSON.stringify(ctx.session)}`);
+  async startCommand(@Ctx() ctx: Scenes.WizardContext) {
+    console.log(123, ctx);
+    await ctx.scene.enter('start_scene');
   }
 
   @On('text')
-  async onText(@Message('text') message: string, @Ctx() ctx: BotContext) {
-    if (ctx.session.currentState === State.AwaitingCity) {
-      console.log(ctx);
-      ctx.session.city = 'yerevan';
-      ctx.session.currentState = null;
-      await ctx.reply(`Замечательно, ваш город: ${ctx.session.city}`);
-      // Выполнение дальнейших действий
-    }
+  async onText(@Message('text') message: string, @Ctx() ctx) {
+    console.log(ctx, message);
   }
 
   @Hears('/go')
-  sendAQI(ctx: Context) {
+  sendAQI(ctx) {
     this.airQService.onMessage$().subscribe((val) => {
       console.log(val.data);
       const { title, emoji } = getAqiInfo(+val.data.data.aqi);
@@ -72,12 +57,12 @@ export class AppService {
   }
 
   @On('sticker')
-  async onSticker(ctx: Context) {
+  async onSticker(ctx) {
     await ctx.reply('Сомнительно, но окэй');
   }
 
   @Command('subscribe')
-  onSubscribeCommand(ctx: Context) {
+  onSubscribeCommand(ctx) {
     if (this.subscribers[ctx.update.message.from.id]) {
       ctx.reply('Уже подписаны');
       return;
