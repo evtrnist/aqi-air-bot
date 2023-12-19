@@ -15,4 +15,5 @@ model User {
   id            String   @id
   subscriptions String[]
   time          String
+  timeZone      String
 }
