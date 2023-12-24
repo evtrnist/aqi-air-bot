@@ -7,6 +7,8 @@ import { AirQService } from './air-q.service';
 import { PrismaModule } from 'prisma/prisma.module';
 import { StartModule } from './start/start.module';
 import { session } from 'telegraf';
+import { UsersModule } from './users/users.module';
+import { ApiModule } from './api/api.module';
 
 export const sessionMiddleware = session();
 
@@ -20,6 +22,8 @@ export const sessionMiddleware = session();
       middlewares: [sessionMiddleware],
     }),
     StartModule,
+    UsersModule,
+    ApiModule,
   ],
   providers: [AppService, AirQService],
 })

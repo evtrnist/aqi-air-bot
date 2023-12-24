@@ -12,7 +12,7 @@ datasource db {
 }
 
 model User {
-  id            String   @id
+  id            Int   @id
   subscriptions String[]
   time          String
   timeZone      String

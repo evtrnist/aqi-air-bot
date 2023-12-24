@@ -12,7 +12,6 @@ import {
 import { AirQService } from './air-q.service';
 
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { State } from './session-state';
 import { Telegraf } from 'telegraf';
 
 import { DateTime } from 'luxon';
@@ -36,7 +35,7 @@ export class AppService {
   @Start()
   async startCommand(@Ctx() ctx: Scenes.WizardContext) {
     console.log(123, ctx);
-    await ctx.scene.enter('start_scene');
+    await ctx.scene.enter(Scene.Start);
   }
 
   @On('text')
