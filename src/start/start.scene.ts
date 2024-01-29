@@ -3,7 +3,7 @@ import { WizardContext } from 'telegraf/typings/scenes';
 import { Scene } from 'src/constants/scene';
 import { UsersService } from 'src/users/users.service';
 import { ApiService } from 'src/api/api-service';
-import { EMPTY, Observable, catchError } from 'rxjs';
+import { Markup } from 'telegraf';
 
 @Wizard(Scene.Start)
 export class StartWizard {
@@ -11,14 +11,46 @@ export class StartWizard {
     private readonly usersService: UsersService,
     private readonly apiService: ApiService,
   ) {}
-  @WizardStep(1)
-  async onStep1(@Context() ctx: WizardContext) {
+  @WizardStep(0)
+  async onStep0(@Context() ctx: WizardContext) {
     await ctx.wizard.next();
 
     await ctx.reply(
-      'Привет! Я бот, который поможет отслеживать качество воздуха на улице. Напиши в ответном сообщении название города на английском языке, за качеством воздуха которого ты хочешь следить. Или даже ссылку на станцию с <a href="https://aqicn.org/here/">сайта</a> в формате https://aqicn.org/station/номер_станции',
+      'Привет! Я бот, который помогает отслеживать качество воздуха на улице. Напиши в ответном сообщении название города на английском языке, за качеством воздуха которого ты хочешь следить. Или даже id станции с <a href="https://aqicn.org/here/">сайта</a>',
       { parse_mode: 'HTML' },
     );
+  }
+
+  @WizardStep(1)
+  async onStep1(
+    @Context() ctx: WizardContext,
+    @Message() msg: { text: string },
+  ) {
+    const isNumeric = /^\d+$/.test(msg.text);
+    let answer = msg.text;
+
+    if (isNumeric) {
+      answer = `A${msg.text}`;
+    }
+    this.apiService
+      .getData(answer)
+      .then(async (data) => {
+        console.log(data.data);
+        if (data.data === 'Unknown station') {
+          this.sendCityErrorMessage(ctx);
+        } else {
+          ctx.wizard.state['subscription'] = msg.text;
+
+          await ctx.wizard.next();
+
+          const place = isNumeric ? 'станции' : 'городу';
+
+          await ctx.reply(
+            `Отлично, я буду присылать тебе данные по ${place} ${msg.text.toUpperCase()}, а теперь уточни, в какое время тебе бы хотелось получать уведомления в формате HH:MM`,
+          );
+        }
+      })
+      .catch((e) => console.error(e));
   }
 
   @WizardStep(2)
@@ -26,71 +58,78 @@ export class StartWizard {
     @Context() ctx: WizardContext,
     @Message() msg: { text: string },
   ) {
-    console.log(msg.text);
+    const isValidTime = /^([01]\d|2[0-3]):([0-5]\d)$/.test(msg.text);
+    if (!isValidTime) {
+      this.sendTimeErrorMessage(ctx);
+    } else {
+      ctx.wizard.state['time'] = msg.text;
 
-    let probableSubscription = msg.text.split('/').at(-1);
+      await ctx.wizard.next();
 
-    if (probableSubscription[0] === '@') {
-      probableSubscription = ['A', ...probableSubscription.slice(1)].join('');
+      await ctx.reply(
+        'И теперь мне нужен твой часовой пояс UTC, чтобы точно не промахнуться с уведомлением, напиши его в формате +02 или -02',
+      );
     }
-
-    console.log(probableSubscription);
-
-    this.apiService
-      .getData$(probableSubscription)
-      .pipe(catchError((err) => this.handleError$(err)))
-      .subscribe(async () => {
-        ctx.wizard.state['subscription'] = msg.text;
-
-        await ctx.wizard.next();
-
-        await ctx.reply(
-          'Отлично, я буду присылать тебе данные по (город/станция), а теперь уточни, в какое время тебе бы хотелось получать уведомления в формате HH:MM',
-        );
-      });
   }
 
   @WizardStep(3)
   async onStep3(
     @Context() ctx: WizardContext,
-    @Message() msg: { text: string },
-  ) {
-    ctx.wizard.state['time'] = msg.text;
-
-    await ctx.wizard.next();
-
-    await ctx.reply(
-      'И теперь мне нужен твой часовой пояс, чтобы точно не промахнуться с уведомлением, напиши его в формате +02 или -02',
-    );
-  }
-
-  @WizardStep(4)
-  async onStep4(
-    @Context() ctx: WizardContext,
     @Message() msg: { text: string; from: { id: number } },
   ) {
-    ctx.wizard.state['timeZone'] = msg.text;
+    const isUtcTimeZone = /^([+-]\d{2})$/.test(msg.text);
 
-    await ctx.reply(
-      'Все готово! Обрати внимание, что перенастроить время уведомлений, часовой пояс и добавить станций/городов для отслеживания AQI можно в настройках, которые только что появились чуть ниже',
-    );
+    if (!isUtcTimeZone) {
+      this.sendTimeZoneErrorMessage(ctx);
+    } else {
+      ctx.wizard.state['timeZone'] = msg.text;
 
-    console.log('wizard', ctx.wizard);
-
-    this.usersService
-      .createUser({
-        id: msg.from.id,
-        subscriptions: [ctx.wizard.state['subscription']],
-        time: ctx.wizard.state['time'] as string,
-        timeZone: ctx.wizard.state['timeZone'] as string,
-      })
-      .then((res) => console.log('res', res))
-      .catch((e) => console.error(e));
+      this.usersService
+        .createUser({
+          id: msg.from.id,
+          subscriptions: [ctx.wizard.state['subscription']],
+          time: ctx.wizard.state['time'] as string,
+          timeZone: ctx.wizard.state['timeZone'] as string,
+        })
+        .then(async () => {
+          await ctx.reply(
+            'Все готово! Обрати внимание, что перенастроить время уведомлений, часовой пояс и добавить станций/городов для отслеживания AQI можно в настройках, которые только что появились чуть ниже',
+            Markup.keyboard([
+              ['Настройки'], // Первый ряд кнопок
+              ['Результаты по всем подпискам'], // Второй ряд кнопок
+              ['Тест'], // Третий ряд кнопок
+            ])
+              .resize()
+              .persistent(true),
+          );
+        })
+        .catch((e) => console.error(e));
+    }
   }
 
-  private handleError$(error: unknown): Observable<never> {
-    console.log(error);
+  private async sendCityErrorMessage(@Context() ctx: WizardContext) {
+    await ctx.reply(
+      'Упс, произошла ошибка с попыткой определить город или станцию. Если ты пытаешься ввести город, то проверь еще раз написание на английском',
+      { parse_mode: 'HTML' },
+    );
 
-    return EMPTY;
+    await ctx.reply(
+      'А если проблемы с поиском id станции <a href="https://aqicn.org/here/">сайта</a>, нажми на точку станции, подожди пока загрузится ее страница, прокрути до блока Air Quality Historical Data, двумя строками ниже будет указан id. Ниже есть скриншот с примером',
+      { parse_mode: 'HTML' },
+    );
+
+    await ctx.replyWithPhoto({ source: './assets/images/example.png' });
+  }
+
+  private async sendTimeErrorMessage(@Context() ctx: WizardContext) {
+    await ctx.reply(
+      'Не получается распознать формат времени. Пожалуйста, проверь его еще раз. Например, 20:30',
+    );
+  }
+
+  private async sendTimeZoneErrorMessage(@Context() ctx: WizardContext) {
+    await ctx.reply(
+      'Не получается распознать формат часового пояса. Пожалуйста, проверь его еще раз. Например, +04',
+    );
   }
 }

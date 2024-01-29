@@ -4,8 +4,6 @@ import { AxiosResponse } from 'axios';
 import { Observable } from 'rxjs';
 
 const URL = `https://api.waqi.info/feed/${process.env.STATION_ID}/?token=${process.env.API_TOKEN}`;
-const OTHER_URL = `https://data.sensor.community/airrohr/v1/sensor/${process.env.STATION_COMMUNITY_ID}/`;
-const OTHER_URL_WEATHER = `https://data.sensor.community/airrohr/v1/sensor/${process.env.STATION_WEATHER_ID}/`;
 @Injectable()
 export class AirQService {
   constructor(private readonly httpService: HttpService) {}

@@ -1,16 +1,17 @@
-import { HttpService } from '@nestjs/axios';
 import { Injectable } from '@nestjs/common';
-import { AxiosResponse } from 'axios';
-import { Observable, map } from 'rxjs';
+import axios, { AxiosResponse } from 'axios';
 
 @Injectable()
 export class ApiService {
-  constructor(private readonly httpService: HttpService) {}
-
-  public getData$(mapPoint: string): Observable<AxiosResponse<any, any>> {
-    return this.httpService
-      .get(this.getUrl(mapPoint))
-      .pipe(map((result) => result.data));
+  public async getData(mapPoint: string): Promise<any> {
+    try {
+      const response: AxiosResponse<any> = await axios.get(
+        this.getUrl(mapPoint),
+      );
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
   }
 
   private getUrl(mapPoint: string): string {
