@@ -1,12 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { Command, Hears, InjectBot, On, Start, Update } from 'nestjs-telegraf';
-import { Context } from 'vm';
+import {
+  Command,
+  Ctx,
+  Hears,
+  InjectBot,
+  Message,
+  On,
+  Start,
+  Update,
+} from 'nestjs-telegraf';
 import { AirQService } from './air-q.service';
+
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { Telegraf } from 'telegraf';
 
 import { DateTime } from 'luxon';
-import { Cron, CronExpression } from '@nestjs/schedule';
 import { getAqiInfo } from './get-aqi-value.map';
+import { Scenes } from 'telegraf';
+import { Scene } from './constants/scene';
 
 @Update()
 @Injectable()
@@ -20,17 +31,20 @@ export class AppService {
     private readonly airQService: AirQService,
     @InjectBot() private readonly bot: Telegraf,
   ) {}
-  getData(): { message: string } {
-    return { message: 'Welcome to server!' };
-  }
 
   @Start()
-  async startCommand(ctx: Context) {
-    await ctx.reply('Сейчас мы узнаем откуда готовилось нагазение');
+  async startCommand(@Ctx() ctx: Scenes.WizardContext) {
+    console.log(123, ctx);
+    await ctx.scene.enter(Scene.Start);
+  }
+
+  @On('text')
+  async onText(@Message('text') message: string, @Ctx() ctx) {
+    console.log(ctx, message);
   }
 
   @Hears('/go')
-  sendAQI(ctx: Context) {
+  sendAQI(ctx) {
     this.airQService.onMessage$().subscribe((val) => {
       console.log(val.data);
       const { title, emoji } = getAqiInfo(+val.data.data.aqi);
@@ -42,12 +56,12 @@ export class AppService {
   }
 
   @On('sticker')
-  async onSticker(ctx: Context) {
+  async onSticker(ctx) {
     await ctx.reply('Сомнительно, но окэй');
   }
 
   @Command('subscribe')
-  onSubscribeCommand(ctx: Context) {
+  onSubscribeCommand(ctx) {
     if (this.subscribers[ctx.update.message.from.id]) {
       ctx.reply('Уже подписаны');
       return;

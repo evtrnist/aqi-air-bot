@@ -9,15 +9,18 @@
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
-    "start:dev": "export $(xargs < ./.env) > /dev/null 2>&1 && nest start --watch",
+    "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "migrate": "npx prisma migrate dev",
+    "studio": "npx prisma studio",
+    "generate": "npx prisma generate"
   },
   "dependencies": {
     "@nestjs/axios": "^3.0.1",
@@ -26,18 +29,25 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^4.0.0",
     "@prisma/client": "^5.6.0",
+    "@types/validator": "^13.11.7",
     "axios": "^1.6.2",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.13.2",
     "cron": "^3.1.6",
     "dotenv": "^16.3.1",
     "luxon": "^3.4.4",
+    "nanoid": "^5.0.4",
     "nestjs-telegraf": "^2.7.0",
     "reflect-metadata": "^0.1.13",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "telegraf": "^4.15.3",
+    "telegraf-session-local": "^2.1.1"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
     "@nestjs/schematics": "^10.0.0",
     "@nestjs/testing": "^10.0.0",
+    "@types/cron": "^2.4.0",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.10",
     "@types/node": "^20.3.1",
@@ -74,5 +84,8 @@
     ],
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
+  },
+  "prisma": {
+    "schema": "./prisma/schema.prisma"
   }
 }
