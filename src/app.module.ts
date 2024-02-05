@@ -10,6 +10,7 @@ import { UsersModule } from './users/users.module';
 import { ApiModule } from './api/api.module';
 import { StartWizard } from './start/start.scene';
 import { ApiService } from './api/api-service';
+import { SchedulerModule } from './scheduler/scheduler.module';
 
 export const sessionMiddleware = session();
 
@@ -24,6 +25,7 @@ export const sessionMiddleware = session();
     }),
     UsersModule,
     ApiModule,
+    SchedulerModule,
   ],
   providers: [AppService, AirQService, ApiService, StartWizard],
 })

@@ -4,6 +4,7 @@ import { Scene } from 'src/constants/scene';
 import { UsersService } from 'src/users/users.service';
 import { ApiService } from 'src/api/api-service';
 import { Markup } from 'telegraf';
+import { EMPTY, catchError } from 'rxjs';
 
 @Wizard(Scene.Start)
 export class StartWizard {
@@ -33,8 +34,14 @@ export class StartWizard {
       answer = `A${msg.text}`;
     }
     this.apiService
-      .getData(answer)
-      .then(async (data) => {
+      .getData$(answer)
+      .pipe(
+        catchError((err) => {
+          console.log(err);
+          return EMPTY;
+        }),
+      )
+      .subscribe(async (data) => {
         console.log(data.data);
         if (data.data === 'Unknown station') {
           this.sendCityErrorMessage(ctx);
@@ -49,8 +56,7 @@ export class StartWizard {
             `Отлично, я буду присылать тебе данные по ${place} ${msg.text.toUpperCase()}, а теперь уточни, в какое время тебе бы хотелось получать уведомления в формате HH:MM`,
           );
         }
-      })
-      .catch((e) => console.error(e));
+      });
   }
 
   @WizardStep(2)
