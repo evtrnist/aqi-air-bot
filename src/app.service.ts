@@ -1,10 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import {
   Command,
   Ctx,
   Hears,
   InjectBot,
-  Message,
   On,
   Start,
   Update,
@@ -18,10 +17,11 @@ import { DateTime } from 'luxon';
 import { getAqiInfo } from './get-aqi-value.map';
 import { Scenes } from 'telegraf';
 import { Scene } from './constants/scene';
+import { UsersService } from './users/users.service';
 
 @Update()
 @Injectable()
-export class AppService {
+export class AppService implements OnModuleInit {
   private subscribers = {};
   private hoursMap = {
     8: true,
@@ -30,17 +30,12 @@ export class AppService {
   constructor(
     private readonly airQService: AirQService,
     @InjectBot() private readonly bot: Telegraf,
+    private readonly usersService: UsersService,
   ) {}
 
   @Start()
   async startCommand(@Ctx() ctx: Scenes.WizardContext) {
-    console.log(123, ctx);
     await ctx.scene.enter(Scene.Start);
-  }
-
-  @On('text')
-  async onText(@Message('text') message: string, @Ctx() ctx) {
-    console.log(ctx, message);
   }
 
   @Hears('/go')
@@ -75,7 +70,6 @@ export class AppService {
     timeZone: 'Asia/Yerevan',
   })
   handleCron() {
-    console.log(this.subscribers);
     const erevanTime = DateTime.now().setZone('Asia/Yerevan');
     if (this.hoursMap[erevanTime.hour] && erevanTime.minute == 0) {
       this.sendNotifications();
@@ -102,5 +96,15 @@ export class AppService {
         );
       }
     });
+  }
+
+  // new
+
+  async onModuleInit() {
+    this.initSnapshot();
+  }
+
+  private async initSnapshot() {
+    await this.usersService.loadUsersSnapshot();
   }
 }
