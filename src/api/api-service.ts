@@ -14,6 +14,6 @@ export class ApiService {
   }
 
   private getUrl(mapPoint: string): string {
-    return `https://api.waqi.info/feed/${mapPoint}/?token=${process.env.API_TOKEN}`;
+    return `https://api.waqi.info/feed/A${mapPoint}/?token=${process.env.API_TOKEN}`;
   }
 }

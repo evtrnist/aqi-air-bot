@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ScheduleModule } from '@nestjs/schedule';
+import { ScheduleModule as NestScheduleModule } from '@nestjs/schedule';
 import { HttpModule } from '@nestjs/axios';
 import { AppService } from './app.service';
 import { TelegrafModule } from 'nestjs-telegraf';
@@ -11,6 +11,7 @@ import { ApiModule } from './api/api.module';
 import { StartWizard } from './start/start.scene';
 import { ApiService } from './api/api-service';
 import { SchedulerModule } from './scheduler/scheduler.module';
+import { SubscriptionCommandService } from './commands/subscription-command.service';
 
 export const sessionMiddleware = session();
 
@@ -18,7 +19,7 @@ export const sessionMiddleware = session();
   imports: [
     HttpModule,
     PrismaModule,
-    ScheduleModule.forRoot(),
+    NestScheduleModule.forRoot(),
     TelegrafModule.forRoot({
       token: process.env.BOT_TOKEN,
       middlewares: [sessionMiddleware],
@@ -27,6 +28,12 @@ export const sessionMiddleware = session();
     ApiModule,
     SchedulerModule,
   ],
-  providers: [AppService, AirQService, ApiService, StartWizard],
+  providers: [
+    AppService,
+    AirQService,
+    ApiService,
+    StartWizard,
+    SubscriptionCommandService,
+  ],
 })
 export class AppModule {}

@@ -24,10 +24,16 @@ export class UsersRepository {
     });
   }
 
-  async updateUser(id: number, updateUserDto: UpdateUserDto) {
+  async updateUser(id: number, updateUserDto: UpdateUserDto): Promise<User> {
     return await this.prismaService.user.update({
       where: { id },
       data: updateUserDto,
+    });
+  }
+
+  async findUser(id: number): Promise<User> {
+    return await this.prismaService.user.findUnique({
+      where: { id },
     });
   }
 }

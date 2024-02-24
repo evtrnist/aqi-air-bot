@@ -1,12 +1,11 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DateTime } from 'luxon';
 import { UsersService } from 'src/users/users.service';
-import * as nodeSchedule from 'node-schedule';
 import { InjectBot } from 'nestjs-telegraf';
 import { Telegraf } from 'telegraf';
-import { User } from '@prisma/client';
 import { ApiService } from 'src/api/api-service';
 import { concatMap, from } from 'rxjs';
+import { SchedulerRegistry } from '@nestjs/schedule';
+import { CronJob } from 'cron';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
@@ -14,50 +13,55 @@ export class SchedulerService implements OnModuleInit {
     private readonly usersService: UsersService,
     @InjectBot() private readonly bot: Telegraf,
     private readonly apiService: ApiService,
+    private schedulerRegistry: SchedulerRegistry,
   ) {}
   onModuleInit() {
-    this.scheduleNotifications();
+    this.setScheduleNotifications();
   }
 
-  private scheduleNotifications() {
+  private setScheduleNotifications() {
     const usersSnapshot = this.usersService.usersSnapshot;
 
-    Object.values(usersSnapshot).map((user) => {
-      const nextNotificationTime = this.calculateNextNotificationTime(user);
-      if (nextNotificationTime) {
-        nodeSchedule.scheduleJob(nextNotificationTime.toJSDate(), () => {
-          this.sendNotification(user);
-        });
-      }
+    Object.values(usersSnapshot).forEach((user) => {
+      // Вместо вычисления одного следующего времени уведомления,
+      // создаем cron-выражение для ежедневного повторения в заданное пользователем время.
+      const [hour, minute] = user.time.split(':').map(Number);
+      const cronExpression = `0 ${minute} ${hour} * * *`;
+
+      user.subscriptions.forEach((subscription) => {
+        const job = new CronJob(
+          cronExpression,
+          () => {
+            this.sendNotification(user.id, subscription);
+          },
+          null,
+          true,
+          user.timeZone,
+        );
+
+        // Добавляем задачу в SchedulerRegistry
+        this.schedulerRegistry.addCronJob(
+          `notify_${user.id}_${subscription}`,
+          job,
+        );
+      });
     });
   }
 
-  private calculateNextNotificationTime(user): DateTime | null {
-    // Предполагаем, что `user.time` - это строка в формате "HH:mm",
-    // а `user.timeZone` - это строка смещения от UTC, например, "+04".
-
-    // Преобразуем смещение в формат, пригодный для Luxon
-    const offset = 'UTC' + user.timeZone.padStart(3, '+'); // Гарантирует формат "+04" или "-05"
-
-    // Получаем текущее время с учетом смещения часового пояса
-    const now = DateTime.now().setZone(offset);
-
-    // Разбираем желаемое время уведомлений пользователя
-    const [hour, minute] = user.time.split(':').map(Number);
-
-    // Создаем объект DateTime для желаемого времени уведомлений сегодня
-    let notificationTime = now.set({ hour, minute, second: 0, millisecond: 0 });
-
-    // Если полученное время уже прошло, планируем уведомление на следующий день
-    if (notificationTime <= now) {
-      notificationTime = notificationTime.plus({ days: 1 });
-    }
-
-    return notificationTime;
+  public deleteScheduleNotification() {
+    // TO DO
   }
 
-  private sendNotification({ id, subscriptions }: User) {
-    from(subscriptions)
+  public updateScheduleNotification() {
+    // TO DO
+  }
+
+  public createScheduleNotification() {
+    // TO DO
+  }
+
+  private sendNotification(id: number, subscription: string) {
+    from(subscription)
       .pipe(concatMap((subscription) => this.apiService.getData$(subscription)))
       .subscribe((data) => {
         console.log(data, id);

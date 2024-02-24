@@ -4,7 +4,6 @@ import {
   Ctx,
   Hears,
   InjectBot,
-  Message,
   On,
   Start,
   Update,
@@ -37,11 +36,6 @@ export class AppService implements OnModuleInit {
   @Start()
   async startCommand(@Ctx() ctx: Scenes.WizardContext) {
     await ctx.scene.enter(Scene.Start);
-  }
-
-  @On('text')
-  async onText(@Message('text') message: string, @Ctx() ctx) {
-    console.log(ctx, message);
   }
 
   @Hears('/go')

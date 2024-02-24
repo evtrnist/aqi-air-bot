@@ -30,6 +30,10 @@ export class UsersService {
     return updatedUser;
   }
 
+  async findUser(id: number): Promise<User> {
+    return this.usersRepository.findUser(id);
+  }
+
   async findAllUsers(): Promise<User[]> {
     return this.usersRepository.findAllUsers();
   }
